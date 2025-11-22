@@ -27,7 +27,7 @@ spec:
                 name: {{ include "wiki-chart.fullname" $ }}-grafana
                 port:
                   number: {{ $.Values.grafana.service.port }}
-          # FastAPI routes
+          # FastAPI routes - specific paths first
           - path: /users
             pathType: Prefix
             backend:
@@ -36,6 +36,21 @@ spec:
                 port:
                   number: {{ $.Values.fastapi.service.port }}
           - path: /posts
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "wiki-chart.fullname" $ }}-fastapi
+                port:
+                  number: {{ $.Values.fastapi.service.port }}
+          - path: /metrics
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "wiki-chart.fullname" $ }}-fastapi
+                port:
+                  number: {{ $.Values.fastapi.service.port }}
+          # Root path last (matches everything else)
+          - path: /
             pathType: Prefix
             backend:
               service:

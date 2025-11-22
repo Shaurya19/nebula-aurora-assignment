@@ -20,7 +20,7 @@ postgresql:
   enabled: true
   image:
     repository: bitnami/postgresql
-    tag: "16.2.0"
+    tag: "latest"
   auth:
     postgresPassword: wiki_postgres_password
     username: wiki_user
@@ -103,6 +103,10 @@ ingress:
           pathType: Prefix
         - path: /posts
           pathType: Prefix
+        - path: /metrics
+          pathType: Prefix
         - path: /grafana
+          pathType: Prefix
+        - path: /
           pathType: Prefix
 
