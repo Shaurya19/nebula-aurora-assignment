@@ -9,7 +9,9 @@ RUN apt-get update && \
     curl \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* \
-    && rm -rf /var/cache/apt/archives/*
+    && rm -rf /var/cache/apt/archives/* \
+    && rm -rf /tmp/* \
+    && rm -rf /var/tmp/*
 
 # Install uv
 RUN pip install --no-cache-dir uv
