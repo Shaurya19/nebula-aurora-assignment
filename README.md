@@ -12,12 +12,15 @@ This repository contains a production-ready Helm-packaged FastAPI Wikipedia-like
 │   ├── requirements.txt  # Python dependencies
 │   └── README.md         # Service documentation
 │
-└── wiki-chart/           # Helm chart
-    ├── Chart.yaml        # Chart metadata
-    ├── values.yaml       # Default configuration values
-    ├── templates/        # Kubernetes manifests
-    ├── NOTES.txt         # Post-installation instructions
-    └── README.md         # Chart documentation
+├── wiki-chart/           # Helm chart
+│   ├── Chart.yaml        # Chart metadata
+│   ├── values.yaml       # Default configuration values
+│   ├── templates/        # Kubernetes manifests
+│   ├── NOTES.txt         # Post-installation instructions
+│   └── README.md         # Chart documentation
+│
+├── Dockerfile            # Part 2: Containerized cluster with k3d
+└── start-cluster.sh      # Part 2: Cluster startup script
 ```
 
 ## Quick Start
@@ -25,144 +28,61 @@ This repository contains a production-ready Helm-packaged FastAPI Wikipedia-like
 ### 1. Build the Docker Image
 
 ```bash
-cd wiki-service
-docker build . -t <your-registry>/wiki:latest
+docker build -t my-wiki:local ./wiki-service
 ```
 
-### 2. Update Image Name in values.yaml
-
-Edit `wiki-chart/values.yaml` and set:
-
-```yaml
-fastapi:
-  image_name: <your-registry>/wiki:latest
-```
-
-### 3. Install Helm Dependencies
-
-**Important:** You must run this step before installing the chart:
+### 2. Install the Chart
 
 ```bash
-cd wiki-chart
-helm dependency update
+helm install wiki ./wiki-chart --set fastapi.image_name=my-wiki:local
 ```
 
-This downloads the PostgreSQL chart dependency. The `charts/` directory and `Chart.lock` file will be created.
+### 3. Access the Service
 
-### 4. Install the Chart
+Use port-forwarding to access the FastAPI service:
 
 ```bash
-helm install wiki ./wiki-chart
+kubectl port-forward svc/wiki-wiki-chart-fastapi 8080:8000
 ```
 
-Or with custom image name:
+Then access: `http://localhost:8080`
 
-```bash
-helm install wiki ./wiki-chart --set fastapi.image_name=<your-registry>/wiki:latest
-```
+## Part 2: Containerized Cluster with k3d
 
-## Creating the Submission Zip
+Part 2 packages the entire cluster in a Docker container using Docker-in-Docker and k3d.
 
-To create the zip file for submission:
+### Build and Run Part 2
 
 ```bash
 # From the repository root
-zip -r wiki-submission.zip wiki-service/ wiki-chart/
+# Build the Docker image
+docker build -t wiki-cluster:latest .
+
+# Run the container (requires --privileged flag for Docker-in-Docker)
+docker run -d --name wiki-cluster --privileged -p 8080:8080 wiki-cluster:latest
 ```
 
-Or using tar:
+### Access the Services
+
+After the container starts (wait 1-2 minutes for cluster initialization), access services at:
+
+- **FastAPI**: `http://localhost:8080/users`, `http://localhost:8080/posts`
+- **Grafana Dashboard**: `http://localhost:8080/grafana/d/creation-dashboard-678/creation`
+- **Metrics**: `http://localhost:8080/metrics`
+
+### Check Container Status
 
 ```bash
-tar -czf wiki-submission.tar.gz wiki-service/ wiki-chart/
+# View logs
+docker logs wiki-cluster
+
+# Follow logs
+docker logs -f wiki-cluster
+
+# Stop the container
+docker stop wiki-cluster
+
+# Remove the container
+docker rm wiki-cluster
 ```
 
-**Important:** Before creating the zip:
-
-1. Ensure `wiki-chart/values.yaml` has a placeholder for `fastapi.image_name` (the grader will set this)
-2. Verify all required files are present:
-   - `wiki-service/Dockerfile`
-   - `wiki-service/app/` (all source files)
-   - `wiki-service/requirements.txt`
-   - `wiki-service/README.md`
-   - `wiki-chart/Chart.yaml`
-   - `wiki-chart/values.yaml`
-   - `wiki-chart/templates/` (all template files)
-   - `wiki-chart/NOTES.txt`
-   - `wiki-chart/README.md`
-
-## Configuration
-
-### Setting the FastAPI Image Name
-
-The grader will set the `fastapi.image_name` value before installation. You can also set it:
-
-1. **In values.yaml:**
-   ```yaml
-   fastapi:
-     image_name: your-registry/wiki:latest
-   ```
-
-2. **Via command line:**
-   ```bash
-   helm install wiki ./wiki-chart --set fastapi.image_name=my-registry/wiki:v1.0.0
-   ```
-
-3. **Via custom values file:**
-   ```yaml
-   # custom-values.yaml
-   fastapi:
-     image_name: my-registry/wiki:v1.0.0
-   ```
-   ```bash
-   helm install wiki ./wiki-chart -f custom-values.yaml
-   ```
-
-## Features
-
-- **FastAPI Application**: RESTful API with `/users/*` and `/posts/*` endpoints
-- **PostgreSQL**: In-cluster database with persistent storage
-- **Prometheus**: Metrics collection and scraping
-- **Grafana**: Dashboard at `/grafana/d/creation-dashboard-678/creation`
-- **Ingress**: Routes configured for API and Grafana
-- **Resource Constraints**: Default configuration fits ≤2 CPU, 4GB RAM, 5GB disk
-
-## Testing
-
-After installation, see `wiki-chart/NOTES.txt` for detailed testing instructions, or run:
-
-```bash
-# Check pods
-kubectl get pods
-
-# Port-forward FastAPI
-kubectl port-forward svc/wiki-chart-fastapi 8080:80
-
-# Test API
-curl -X POST http://localhost:8080/users \
-  -H "Content-Type: application/json" \
-  -d '{"name": "Test User"}'
-
-# Access Grafana
-kubectl port-forward svc/wiki-chart-grafana 3000:3000
-# Open: http://localhost:3000/grafana/d/creation-dashboard-678/creation
-# Login: admin / admin
-```
-
-## Documentation
-
-- **Service Documentation**: See `wiki-service/README.md`
-- **Chart Documentation**: See `wiki-chart/README.md`
-- **Installation Notes**: See `wiki-chart/NOTES.txt` (displayed after `helm install`)
-
-## Requirements Met
-
-✅ FastAPI app with `/users/*` and `/posts/*` endpoints  
-✅ `/metrics` endpoint for Prometheus  
-✅ PostgreSQL with persistent storage  
-✅ Prometheus scraping FastAPI metrics  
-✅ Grafana dashboard at `/grafana/d/creation-dashboard-678/creation`  
-✅ Ingress routing configured  
-✅ Resource constraints met (≤2 CPU, 4GB RAM, 5GB disk)  
-✅ Database migrations at startup  
-✅ Secrets for database credentials  
-✅ Configurable via values.yaml  
