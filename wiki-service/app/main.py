@@ -83,7 +83,7 @@ async def create_post(post: PostCreate, db: AsyncSession = Depends(get_db)):
     )
 
 
-@app.get("/user/{id}", response_model=UserResponse)
+@app.get("/users/{id}", response_model=UserResponse)
 async def get_user(id: int, db: AsyncSession = Depends(get_db)):
     """
     Fetch a user by ID.
@@ -138,8 +138,8 @@ async def root():
         "message": "User and Post API",
         "endpoints": {
             "POST /users": "Create a new user",
+            "GET /users/{id}": "Get user by ID",
             "POST /posts": "Create a new post",
-            "GET /user/{id}": "Get user by ID",
             "GET /posts/{id}": "Get post by ID",
             "GET /metrics": "Prometheus metrics"
         }

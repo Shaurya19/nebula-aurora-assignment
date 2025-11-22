@@ -1,0 +1,61 @@
+1. Get the application URL by running these commands:
+{{- if .Values.ingress.enabled }}
+{{- range $host := .Values.ingress.hosts }}
+  {{- range .paths }}
+  http{{ if $.Values.ingress.tls }}s{{ end }}://{{ $host.host }}{{ .path }}
+  {{- end }}
+{{- end }}
+
+  Or use port-forwarding:
+  kubectl port-forward svc/{{ include "wiki-chart.fullname" . }}-fastapi 8080:{{ .Values.fastapi.service.port }}
+  Then access: http://localhost:8080
+{{- else if contains "NodePort" .Values.fastapi.service.type }}
+  export NODE_PORT=$(kubectl get --namespace {{ .Release.Namespace }} -o jsonpath="{.spec.ports[0].nodePort}" services {{ include "wiki-chart.fullname" . }}-fastapi)
+  export NODE_IP=$(kubectl get nodes --namespace {{ .Release.Namespace }} -o jsonpath="{.items[0].status.addresses[0].address}")
+  echo http://$NODE_IP:$NODE_PORT
+{{- else if contains "LoadBalancer" .Values.fastapi.service.type }}
+     NOTE: It may take a few minutes for the LoadBalancer IP to be available.
+           You can watch the status of by running 'kubectl get --namespace {{ .Release.Namespace }} svc -w {{ include "wiki-chart.fullname" . }}-fastapi'
+  export SERVICE_IP=$(kubectl get svc --namespace {{ .Release.Namespace }} {{ include "wiki-chart.fullname" . }}-fastapi --template "{{"{{ range (index .status.loadBalancer.ingress 0) }}{{.}}{{ end }}"}}")
+  echo http://$SERVICE_IP:{{ .Values.fastapi.service.port }}
+{{- else if contains "ClusterIP" .Values.fastapi.service.type }}
+  kubectl port-forward svc/{{ include "wiki-chart.fullname" . }}-fastapi 8080:{{ .Values.fastapi.service.port }}
+  Then access: http://localhost:8080
+{{- end }}
+
+2. Verify all pods are running:
+  kubectl get pods -l app.kubernetes.io/instance={{ .Release.Name }}
+
+3. Check FastAPI logs:
+  kubectl logs -l app.kubernetes.io/component=fastapi -f
+
+4. Test the API endpoints:
+  # Create a user
+  curl -X POST http://localhost:8080/users -H "Content-Type: application/json" -d '{"name": "Test User"}'
+  
+  # Create a post (replace USER_ID with the ID from the previous response)
+  curl -X POST http://localhost:8080/posts -H "Content-Type: application/json" -d '{"user_id": 1, "content": "Test post"}'
+  
+  # Get a user
+  curl http://localhost:8080/users/1
+  
+  # Get a post
+  curl http://localhost:8080/posts/1
+  
+  # Get metrics
+  curl http://localhost:8080/metrics
+
+5. Access Grafana dashboard:
+  # Port-forward Grafana
+  kubectl port-forward svc/{{ include "wiki-chart.fullname" . }}-grafana 3000:{{ .Values.grafana.service.port }}
+  # Then access: http://localhost:3000/grafana/d/creation-dashboard-678/creation
+  # Login: admin / admin
+
+6. Access Prometheus:
+  kubectl port-forward svc/{{ include "wiki-chart.fullname" . }}-prometheus 9090:{{ .Values.prometheus.service.port }}
+  # Then access: http://localhost:9090
+
+7. Verify database connection:
+  kubectl exec -it $(kubectl get pod -l app.kubernetes.io/name=postgresql,app.kubernetes.io/instance={{ .Release.Name }} -o jsonpath='{.items[0].metadata.name}') -- psql -U {{ .Values.database.user }} -d {{ .Values.database.database }} -c "SELECT COUNT(*) FROM users;"
+  kubectl exec -it $(kubectl get pod -l app.kubernetes.io/name=postgresql,app.kubernetes.io/instance={{ .Release.Name }} -o jsonpath='{.items[0].metadata.name}') -- psql -U {{ .Values.database.user }} -d {{ .Values.database.database }} -c "SELECT COUNT(*) FROM posts;"
+
