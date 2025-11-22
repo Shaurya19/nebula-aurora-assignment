@@ -94,10 +94,10 @@ grafana:
 # Ingress Configuration
 ingress:
   enabled: true
-  className: nginx
+  className: traefik  # k3d uses Traefik by default
   annotations: {}
   hosts:
-    - host: example.com
+    - host: localhost  # Use localhost for k3d, can be overridden
       paths:
         - path: /users
           pathType: Prefix
